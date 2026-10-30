@@ -35,7 +35,7 @@ CONFIG_PATH = os.environ.get("RESERVE_CONFIG", os.path.join(BASE_DIR, "config.js
 DB_PATH = os.environ.get("RESERVE_DB", os.path.join(BASE_DIR, "data", "reservations.db"))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 
 if not os.path.exists(CONFIG_PATH):
     sys.exit("No config file at %s. Copy config.example.json to config.json and fill in your settings." % CONFIG_PATH)

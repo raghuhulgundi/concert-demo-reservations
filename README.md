@@ -57,8 +57,8 @@ You can run the installer as often as you like. It never overwrites `config.json
 
 It's `https://<the VM's public address>`, with no port number, because the app uses 443. The installer prints what it detects, but **the TechZone reservation page is the authority**. Open your reservation in TechZone and look for the VM's public IP or hostname under its details. For example:
 
-- `https://52.118.10.20` if TechZone gives you an IP address.
-- `https://my-vm.us-east.techzone.ibm.com` (illustrative) if it gives you a hostname.
+- `https://203.0.113.10` if TechZone gives you an IP address (example address).
+- `https://my-vm.example.com` if it gives you a hostname (example name).
 
 Before you turn on IBMid sign-in, two things to check:
 - **Prefer a hostname:** use one if TechZone gives you one. The IBMid redirect URL (`https://<host>/auth/callback`) is registered once in IBM's SSO tool and must match exactly. IP addresses may not be accepted there and can change if the VM is re-provisioned.
@@ -92,7 +92,7 @@ Edit `config.json`:
 - **`environments[].url`:** replace the two `REPLACE-with...` values with the Concert Operate console URLs for Robin and Yoda. Until you do, the Open buttons are greyed out. Later changes are easier from the page (section 6).
 - **`environments[].description` / `notes`:** optional text shown on each card, for example the cluster name or "log in with the shared demo user from Box".
 - **`admin_key`:** change to a long random string (for example the output of `openssl rand -hex 24`).
-- **`tls_extra_names`:** add the VM's public hostname and IP address, for example `["useast.services.cloud.techzone.ibm.com", "52.118.10.20"]`. These go into the self-signed certificate.
+- **`tls_extra_names`:** add the VM's public hostname and IP address, for example `["my-vm.example.com", "203.0.113.10"]` (example values). These go into the self-signed certificate.
 - **Optional settings:** `slot_minutes` (30), `day_start_hour` / `day_end_hour` for the visible grid (7 to 22), `max_booking_hours` per reservation (8).
 
 Don't put passwords in `notes`: anyone who can reach the page can read them.

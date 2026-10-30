@@ -2,6 +2,10 @@
 
 Versions follow `MAJOR.MINOR.PATCH`. Each release is tagged in git as `vX.Y.Z`.
 
+## v1.1.1 (2026-10-30)
+
+- **README examples:** sample addresses now use the documentation-only range (`203.0.113.x`) and `example.com`, so they can't be mistaken for a real VM.
+
 ## v1.1.0 (2026-10-30)
 
 - **Edit environment links from the page:** admins get an Edit button on each card to change the console URL, description and notes. Changes reach every open page within 30 seconds, with no restart.
