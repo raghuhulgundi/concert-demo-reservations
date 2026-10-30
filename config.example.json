@@ -1,0 +1,50 @@
+{
+  "title": "Concert Operate Demo Environments",
+  "subtitle": "Reserve a time slot so others know when you're demoing. This is a courtesy calendar: it doesn't lock the system.",
+  "host": "0.0.0.0",
+  "port": 443,
+  "tls": true,
+  "tls_cert": "certs/server.crt",
+  "tls_key": "certs/server.key",
+  "tls_extra_names": [],
+  "slot_minutes": 30,
+  "day_start_hour": 7,
+  "day_end_hour": 22,
+  "max_booking_hours": 8,
+  "admin_key": "CHANGE-ME-to-a-long-random-string",
+  "auth": {
+    "enabled": false,
+    "provider_name": "IBMid",
+    "discovery_url": "https://login.ibm.com/oidc/endpoint/default/.well-known/openid-configuration",
+    "client_id": "",
+    "client_secret": "",
+    "redirect_uri": "https://REPLACE-with-vm-hostname/auth/callback",
+    "scopes": "openid profile email",
+    "allowed_email_domains": [
+      "ibm.com"
+    ],
+    "allowed_emails": [],
+    "admin_emails": [
+      "REPLACE-with-your-email@ibm.com"
+    ],
+    "session_hours": 12
+  },
+  "environments": [
+    {
+      "id": "robin",
+      "name": "Robin",
+      "description": "Concert Operate on OCP cluster 1",
+      "url": "https://REPLACE-with-robin-concert-operate-url",
+      "notes": "",
+      "color": "#d2591b"
+    },
+    {
+      "id": "yoda",
+      "name": "Yoda",
+      "description": "Concert Operate on OCP cluster 2",
+      "url": "https://REPLACE-with-yoda-concert-operate-url",
+      "notes": "",
+      "color": "#198038"
+    }
+  ]
+}

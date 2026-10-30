@@ -1,0 +1,16 @@
+[Unit]
+Description=Concert Operate demo environment reservation board
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/demo-reserve
+ExecStart=/usr/bin/python3 /opt/demo-reserve/server.py
+Restart=always
+RestartSec=3
+# Optional overrides:
+# Environment=RESERVE_PORT=8080
+# Environment=RESERVE_ADMIN_KEY=your-long-random-string
+
+[Install]
+WantedBy=multi-user.target

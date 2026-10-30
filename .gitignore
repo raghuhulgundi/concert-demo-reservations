@@ -1,0 +1,12 @@
+# Your real settings (client secret, admin key) stay on the VM, never in git
+config.json
+.env
+
+# Runtime data: reservations, partner list, session key, certificates
+data/
+certs/
+*.db
+
+__pycache__/
+*.pyc
+.DS_Store
