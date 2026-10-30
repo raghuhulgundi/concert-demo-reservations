@@ -14,16 +14,75 @@ A small web page where people reserve time on the **Robin** and **Yoda** Concert
 
 **Port:** it serves HTTPS directly on **port 443**, so that's the only port that needs to be open.
 
+## Quick start: deploy on a RHEL VM
+
+These steps work on a fresh RHEL 8 or 9 VM (for example from TechZone). They take about 10 minutes.
+
+**1. Make a read-only GitHub token** (the repo is private, so the VM needs one to download the code)
+
+- **Open the token page:** on GitHub, go to **Settings**, then **Developer settings**, then **Personal access tokens**, then **Fine-grained tokens**, and click **Generate new token**.
+- **Settings:** name it `techzone-vm-reservations`. Under **Only select repositories**, pick `concert-demo-reservations`. Under **Repository permissions**, set **Contents** to **Read-only**.
+- **Copy the token:** click **Generate token** and copy it right away. GitHub only shows it once.
+
+**2. Download the code and run the installer**
+
+SSH to the VM, then:
+
+```bash
+sudo dnf install -y git
+sudo git clone https://raghuhulgundi@github.com/raghuhulgundi/concert-demo-reservations.git /opt/demo-reserve
+#   when it asks for a password, paste the token
+sudo git -C /opt/demo-reserve config credential.helper store   # optional: remember the token for updates
+cd /opt/demo-reserve
+sudo ./deploy/install-rhel.sh
+```
+
+The installer:
+- **Packages:** installs Python 3, OpenSSL and curl if they're missing.
+- **Config:** creates `config.json` with a random admin key, and adds the VM's names to the HTTPS certificate.
+- **Firewall and SELinux:** opens port 443 in firewalld and fixes SELinux labels.
+- **Service:** sets the app up to start automatically, starts it, checks it's healthy, and **prints the URL**.
+
+**3. Fill in your settings and run it again**
+
+```bash
+sudo vi /opt/demo-reserve/config.json      # Robin/Yoda URLs, admin_emails, auth (section 4)
+sudo /opt/demo-reserve/deploy/install-rhel.sh
+```
+
+You can run the installer as often as you like. It never overwrites `config.json` or your data.
+
+**What's the URL?**
+
+It's `https://<the VM's public address>`, with no port number, because the app uses 443. The installer prints what it detects, but **the TechZone reservation page is the authority**. Open your reservation in TechZone and look for the VM's public IP or hostname under its details. For example:
+
+- `https://52.118.10.20` if TechZone gives you an IP address.
+- `https://my-vm.us-east.techzone.ibm.com` (illustrative) if it gives you a hostname.
+
+Before you turn on IBMid sign-in, two things to check:
+- **Prefer a hostname:** use one if TechZone gives you one. The IBMid redirect URL (`https://<host>/auth/callback`) is registered once in IBM's SSO tool and must match exactly. IP addresses may not be accepted there and can change if the VM is re-provisioned.
+- **Add it to the certificate:** add that hostname or IP to `tls_extra_names` in `config.json`, delete the `certs/` folder, and rerun the installer to regenerate the certificate.
+
+**Updating later**
+
+```bash
+cd /opt/demo-reserve && sudo git pull && sudo ./deploy/install-rhel.sh
+```
+
+The sections below explain each setting and the manual steps in more detail.
+
 ## 1. Get the code and set your environment links
 
 On the TechZone VM:
 
 ```bash
-sudo git clone https://github.com/raghuhulgundi/concert-demo-reservations.git /opt/demo-reserve
+sudo git clone https://raghuhulgundi@github.com/raghuhulgundi/concert-demo-reservations.git /opt/demo-reserve
 cd /opt/demo-reserve
 sudo cp config.example.json config.json
 sudo vi config.json
 ```
+
+(The installer in the quick start does this copy for you.)
 
 `config.json` holds your real settings (client secret, admin key). It's listed in `.gitignore`, so it never gets committed to the public repo. Only `config.example.json` is in git.
 
@@ -44,7 +103,7 @@ cd /opt/demo-reserve
 sudo python3 server.py     # quick test, then Ctrl+C (port 443 needs sudo)
 ```
 
-If the VM can't reach GitHub, download the repo as a zip on your laptop and copy it over with `scp` instead.
+If the VM can't reach GitHub, download the repo as a zip on your laptop (GitHub, **Code**, then **Download ZIP**) and copy it over with `scp` instead.
 
 On first start it creates a self-signed certificate in `certs/` and prints the names it covers. Open `https://<vm-host>`.
 
@@ -223,7 +282,7 @@ Releases are tagged in GitHub (`v1.0.0`, `v1.1.0` and so on), and `CHANGELOG.md`
 cd /opt/demo-reserve
 sudo cp -r data data.backup-$(date +%F)    # just in case
 sudo git pull                               # or: sudo git checkout v1.1.0
-sudo systemctl restart demo-reserve
+sudo ./deploy/install-rhel.sh               # or just: sudo systemctl restart demo-reserve
 curl -k https://localhost/healthz           # shows the running version
 ```
 

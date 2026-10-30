@@ -2,6 +2,11 @@
 
 Versions follow `MAJOR.MINOR.PATCH`. Each release is tagged in git as `vX.Y.Z`.
 
+## v1.0.1 (2026-10-30)
+
+- **RHEL installer:** `deploy/install-rhel.sh` installs packages, creates `config.json` with a random admin key, opens the firewall, sets SELinux labels, installs the systemd service, runs a health check and prints the URL. It's safe to rerun after config changes or a `git pull`.
+- **README quick start:** a new section for RHEL VMs, covering the private-repo token, finding the URL, and updating.
+
 ## v1.0.0 (2026-10-30)
 
 First release.
