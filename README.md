@@ -7,7 +7,8 @@ A small web page where people reserve time on the **Robin** and **Yoda** Concert
 - **Sign-in (optional):** with IBMid sign-in on, IBMers and the partners you approve log in with their IBMid and their name and email fill in automatically (section 4).
 - **Day schedule:** Robin and Yoda side by side. Click a free slot, or drag down a column, to reserve. Click a reservation to see who has it, their contact, and what it's for.
 - **Cancel:** people can cancel their own reservations. Admins can cancel anyone's.
-- **History:** every reservation is kept, including past and cancelled ones, with filters and a CSV download (section 6).
+- **History:** every reservation is kept, including past and cancelled ones, with filters and a CSV download (section 7).
+- **URL changes from the page:** admins update the Robin and Yoda links with an Edit button, and every change is logged (section 6).
 - **Time zones:** each person sees times in their own local time zone.
 
 **What it needs:** Python 3.6 or newer and the `openssl` command, both already on RHEL and Ubuntu TechZone VMs. No pip installs, no web server, no database server. Reservations are stored in `data/reservations.db` (SQLite).
@@ -46,7 +47,7 @@ The installer:
 **3. Fill in your settings and run it again**
 
 ```bash
-sudo vi /opt/demo-reserve/config.json      # Robin/Yoda URLs, admin_emails, auth (section 4)
+sudo vi /opt/demo-reserve/config.json      # admin_emails, auth (section 4), first Robin/Yoda URLs
 sudo /opt/demo-reserve/deploy/install-rhel.sh
 ```
 
@@ -88,7 +89,7 @@ sudo vi config.json
 
 Edit `config.json`:
 
-- **`environments[].url`:** replace the two `REPLACE-with...` values with the Concert Operate console URLs for Robin and Yoda. Until you do, the Open buttons are greyed out.
+- **`environments[].url`:** replace the two `REPLACE-with...` values with the Concert Operate console URLs for Robin and Yoda. Until you do, the Open buttons are greyed out. Later changes are easier from the page (section 6).
 - **`environments[].description` / `notes`:** optional text shown on each card, for example the cluster name or "log in with the shared demo user from Box".
 - **`admin_key`:** change to a long random string (for example the output of `openssl rand -hex 24`).
 - **`tls_extra_names`:** add the VM's public hostname and IP address, for example `["useast.services.cloud.techzone.ibm.com", "52.118.10.20"]`. These go into the self-signed certificate.
@@ -236,7 +237,30 @@ curl -k -H "X-Admin-Key: <admin_key>" -H "Content-Type: application/json" \
 curl -k -X DELETE -H "X-Admin-Key: <admin_key>" https://<vm-host>/api/partners/<id>
 ```
 
-## 6. Reservation history
+## 6. Change the Robin and Yoda URLs
+
+When a cluster is rebuilt or moved, update its link from the page. You don't need to touch the VM.
+
+1. Sign in as an admin (an email in `admin_emails`).
+2. Click **Edit** next to **Robin** or **Yoda** on its card.
+3. Change the **Console URL**, and the description or notes if you like, then click **Save**.
+
+Everyone's page picks up the new link within 30 seconds, without reloading. Reservations aren't affected, because they belong to "Robin" or "Yoda", not to a URL.
+
+**Change history:** each edit records the old value, new value, who changed it and when. You can see it under **Change history** in the Edit dialog.
+
+**`config.json` vs. the page:** the URLs in `config.json` are the starting values. Once you've edited an environment on the page, the page value wins, and editing `config.json` for that environment no longer changes what users see. After the first page edit, keep using the page (or the command below).
+
+**From the command line or a script** (for example right after rebuilding a cluster):
+
+```bash
+curl -k -X PUT -H "X-Admin-Key: <admin_key>" -H "Content-Type: application/json" \
+  -d '{"url":"https://new-console-url.example.com"}' https://<vm-host>/api/environments/robin
+```
+
+Use `robin` or `yoda` (the `id` values in `config.json`). You can also send `description` and `notes`.
+
+## 7. Reservation history
 
 Nothing is ever deleted. Cancelling a reservation marks it **cancelled**, with who cancelled it and when, and frees the slot on the calendar. Past reservations stay in the database too.
 
@@ -254,7 +278,7 @@ Click **History** (top right of the schedule) to see:
 curl -k -H "X-Admin-Key: <admin_key>" "https://<vm-host>/api/history?from=2026-11-01T00:00:00Z&env=robin&status=cancelled"
 ```
 
-## 7. Admin tasks
+## 8. Admin tasks
 
 **Cancel any reservation** (`-k` accepts the self-signed certificate):
 

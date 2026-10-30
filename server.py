@@ -35,7 +35,7 @@ CONFIG_PATH = os.environ.get("RESERVE_CONFIG", os.path.join(BASE_DIR, "config.js
 DB_PATH = os.environ.get("RESERVE_DB", os.path.join(BASE_DIR, "data", "reservations.db"))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 
-__version__ = "1.0.1"
+__version__ = "1.1.0"
 
 if not os.path.exists(CONFIG_PATH):
     sys.exit("No config file at %s. Copy config.example.json to config.json and fill in your settings." % CONFIG_PATH)
@@ -132,6 +132,27 @@ def init_db():
             if col not in cols:
                 conn.execute("ALTER TABLE bookings ADD COLUMN %s TEXT" % col)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_env_time ON bookings(env, start_at, end_at)")
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS env_settings (
+                env TEXT PRIMARY KEY,          -- environment id from config.json (robin, yoda)
+                url TEXT,
+                description TEXT,
+                notes TEXT,
+                updated_by TEXT,
+                updated_at TEXT
+            )"""
+        )
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS env_changes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                env TEXT NOT NULL,
+                field TEXT NOT NULL,
+                old_value TEXT,
+                new_value TEXT,
+                changed_by TEXT,
+                changed_at TEXT NOT NULL
+            )"""
+        )
         conn.execute(
             """CREATE TABLE IF NOT EXISTS partners (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -246,14 +267,38 @@ def history_row(row, now):
     }
 
 
+EDITABLE_ENV_FIELDS = ("url", "description", "notes")
+
+
+def environments():
+    """Environments from config.json, with any changes admins made on the page applied on top."""
+    conn = connect()
+    try:
+        overrides = {r["env"]: r for r in conn.execute("SELECT * FROM env_settings").fetchall()}
+    finally:
+        conn.close()
+    out = []
+    for e in CONFIG["environments"]:
+        item = {k: e.get(k, "") for k in ("id", "name", "description", "url", "notes", "color")}
+        o = overrides.get(e["id"])
+        if o:
+            for f in EDITABLE_ENV_FIELDS:
+                if o[f] is not None:
+                    item[f] = o[f]
+            item["updated_by"] = o["updated_by"] or ""
+            item["updated_at"] = o["updated_at"] or ""
+        out.append(item)
+    return out
+
+
 def public_config():
     keys = ("title", "subtitle", "slot_minutes", "day_start_hour", "day_end_hour", "max_booking_hours")
     cfg = {k: CONFIG.get(k) for k in keys}
-    cfg["environments"] = [
-        {k: e.get(k, "") for k in ("id", "name", "description", "url", "notes", "color")}
-        for e in CONFIG["environments"]
-    ]
+    cfg["environments"] = environments()
     return cfg
+
+
+URL_RE = re.compile(r"^https?://[^\s/$.?#][^\s]*$", re.IGNORECASE)
 
 
 def clean_text(value, limit):
@@ -538,6 +583,69 @@ class Handler(BaseHTTPRequestHandler):
             "partners": [partner_row(r) for r in rows],
         })
 
+    # ---------- environment settings (admins only) ----------
+    def env_update(self, user, env_id):
+        if env_id not in ENVS:
+            return self.send_json(404, {"error": "Unknown environment"})
+        try:
+            data = self.read_json()
+            new = {}
+            if "url" in data:
+                url = clean_text(data.get("url"), 500)
+                if url and not URL_RE.match(url):
+                    raise ValueError("The URL must start with https:// (or http://) and contain no spaces")
+                new["url"] = url
+            if "description" in data:
+                new["description"] = clean_text(data.get("description"), 120)
+            if "notes" in data:
+                new["notes"] = clean_text(data.get("notes"), 300)
+            if not new:
+                raise ValueError("Nothing to change")
+        except (ValueError, json.JSONDecodeError) as e:
+            return self.send_json(400, {"error": str(e)})
+        by = user["e"] if user else "admin key"
+        when = fmt_utc(now_utc())
+        current = {e["id"]: e for e in environments()}[env_id]
+        changed = [f for f in new if (current.get(f) or "") != new[f]]
+        if not changed:
+            return self.send_json(200, {"environment": current, "changed": []})
+        with WRITE_LOCK:
+            conn = connect()
+            try:
+                row = conn.execute("SELECT * FROM env_settings WHERE env = ?", (env_id,)).fetchone()
+                merged = {f: (row[f] if row and row[f] is not None else current.get(f, "")) for f in EDITABLE_ENV_FIELDS}
+                merged.update(new)
+                values = (merged["url"], merged["description"], merged["notes"], by, when, env_id)
+                if row:
+                    conn.execute("UPDATE env_settings SET url = ?, description = ?, notes = ?, updated_by = ?, "
+                                 "updated_at = ? WHERE env = ?", values)
+                else:
+                    conn.execute("INSERT INTO env_settings (url, description, notes, updated_by, updated_at, env) "
+                                 "VALUES (?, ?, ?, ?, ?, ?)", values)
+                for f in changed:
+                    conn.execute(
+                        "INSERT INTO env_changes (env, field, old_value, new_value, changed_by, changed_at) VALUES (?, ?, ?, ?, ?, ?)",
+                        (env_id, f, current.get(f, ""), new[f], by, when),
+                    )
+                conn.commit()
+            finally:
+                conn.close()
+        for f in changed:
+            self.log_message("%s changed %s %s: %r -> %r", by, env_id, f, current.get(f, ""), new[f])
+        updated = {e["id"]: e for e in environments()}[env_id]
+        return self.send_json(200, {"environment": updated, "changed": changed})
+
+    def env_changes(self, env_id):
+        if env_id not in ENVS:
+            return self.send_json(404, {"error": "Unknown environment"})
+        conn = connect()
+        try:
+            rows = conn.execute("SELECT * FROM env_changes WHERE env = ? ORDER BY id DESC LIMIT 100", (env_id,)).fetchall()
+        finally:
+            conn.close()
+        return self.send_json(200, {"changes": [
+            {k: r[k] or "" for k in ("field", "old_value", "new_value", "changed_by", "changed_at")} for r in rows]})
+
     def partners_add(self, user):
         try:
             data = self.read_json()
@@ -665,6 +773,11 @@ class Handler(BaseHTTPRequestHandler):
             if not self.is_admin(user):
                 return self.send_json(403 if user else 401, {"error": "Admins only"})
             return self.partners_list()
+        em = re.match(r"^/api/environments/([A-Za-z0-9_-]+)/changes$", path)
+        if em:
+            if not self.is_admin(user):
+                return self.send_json(403 if user else 401, {"error": "Admins only"})
+            return self.env_changes(em.group(1))
         if path == "/api/history" and not user and self.is_admin(None):
             return self.history(None, query)
         if AUTH_ON and not user:
@@ -769,6 +882,17 @@ class Handler(BaseHTTPRequestHandler):
             finally:
                 conn.close()
         return self.send_json(201, {"booking": public_booking(row, user), "token": token})
+
+    def do_PUT(self):
+        m = re.match(r"^/api/environments/([A-Za-z0-9_-]+)$", urlparse(self.path).path)
+        if not m:
+            return self.send_json(404, {"error": "Not found"})
+        user = self.current_user()
+        if not self.same_origin():
+            return self.send_json(403, {"error": "Cross-site request blocked"})
+        if not self.is_admin(user):
+            return self.send_json(403 if user else 401, {"error": "Admins only"})
+        return self.env_update(user, m.group(1))
 
     def do_DELETE(self):
         path = urlparse(self.path).path

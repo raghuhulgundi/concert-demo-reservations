@@ -2,6 +2,13 @@
 
 Versions follow `MAJOR.MINOR.PATCH`. Each release is tagged in git as `vX.Y.Z`.
 
+## v1.1.0 (2026-10-30)
+
+- **Edit environment links from the page:** admins get an Edit button on each card to change the console URL, description and notes. Changes reach every open page within 30 seconds, with no restart.
+- **Change log:** every edit records the old value, new value, who and when, shown in the Edit dialog.
+- **API:** `PUT /api/environments/<id>` (admin sign-in or admin key) for scripted updates after a cluster rebuild.
+- **Upgrading from 1.0.x:** new database tables are created automatically on startup. `config.json` values stay as the defaults until an environment is edited on the page.
+
 ## v1.0.1 (2026-10-30)
 
 - **RHEL installer:** `deploy/install-rhel.sh` installs packages, creates `config.json` with a random admin key, opens the firewall, sets SELinux labels, installs the systemd service, runs a health check and prints the URL. It's safe to rerun after config changes or a `git pull`.

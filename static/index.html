@@ -19,6 +19,10 @@
   .muted { color: var(--muted); }
   #subtitle { margin: 0; max-width: 720px; font-size: 14px; }
   .me { font-size: 13px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+  .edit-link { font: inherit; font-size: 12px; font-weight: 500; margin-left: 10px; padding: 2px 8px; border: 1px solid #c6c6c6; border-radius: 4px; background: #fff; color: var(--muted); cursor: pointer; vertical-align: middle; }
+  .edit-link:hover { color: var(--ink); border-color: var(--ink); }
+  #envChanges { font-size: 12px; max-height: 180px; overflow: auto; }
+  #envChanges li { margin-bottom: 6px; overflow-wrap: anywhere; }
   .who { text-align: right; font-size: 13px; align-items: flex-end; }
   .btn.small { padding: 5px 10px; font-size: 12px; margin-top: 4px; }
   dialog.wide { width: min(860px, 96vw); }
@@ -243,6 +247,30 @@
   </div>
 </dialog>
 
+<dialog id="envDlg">
+  <form class="dlg" id="envForm" method="dialog">
+    <h3 id="envTitle">Edit environment</h3>
+    <label>Console URL (where the Open button goes)
+      <input id="envUrl" maxlength="500" placeholder="https://..." required>
+    </label>
+    <label>Description
+      <input id="envDesc" maxlength="120" placeholder="Concert Operate on OCP cluster 1">
+    </label>
+    <label>Notes shown on the card (optional, don't put passwords here)
+      <input id="envNotes" maxlength="300" placeholder="Log in with the shared demo user">
+    </label>
+    <p class="err" id="envErr"></p>
+    <details class="always" id="envChangesBox">
+      <summary>Change history</summary>
+      <ul id="envChanges"></ul>
+    </details>
+    <div class="foot">
+      <button type="button" class="btn ghost" id="envCancel">Cancel</button>
+      <button type="submit" class="btn primary" id="envSave">Save</button>
+    </div>
+  </form>
+</dialog>
+
 <dialog id="historyDlg" class="wide xwide">
   <div class="dlg">
     <h3 id="hsTitle">Reservation history</h3>
@@ -356,8 +384,10 @@
     var upFrom = new Date(now.getTime() - 12 * 3600e3), upTo = addDays(now, 14);
     return Promise.all([
       api("/api/bookings?from=" + iso(dayFrom) + "&to=" + iso(dayTo)),
-      api("/api/bookings?from=" + iso(upFrom) + "&to=" + iso(upTo))
+      api("/api/bookings?from=" + iso(upFrom) + "&to=" + iso(upTo)),
+      api("/api/config")
     ]).then(function (res) {
+      S.cfg = res[2]; S.envs = res[2].environments;
       S.dayBookings = res[0].bookings.map(hydrate);
       S.upcoming = res[1].bookings.map(hydrate);
       render();
@@ -392,7 +422,10 @@
 
       wrap.appendChild(el("article", { class: "card", style: "--env:" + env.color }, [
         el("div", { class: "card-head" }, [
-          el("div", {}, [el("h3", { text: env.name }), el("p", { class: "desc muted", text: env.description || "" })]),
+          el("div", {}, [
+            el("h3", {}, [env.name, S.me.admin ? el("button", { class: "edit-link", type: "button", text: "Edit", title: "Change the URL, description or notes", onclick: function () { openEnvEdit(env.id); } }) : null]),
+            el("p", { class: "desc muted", text: env.description || "" })
+          ]),
           pill
         ]),
         status,
@@ -652,6 +685,43 @@
       .then(function () { $("ptAdd").disabled = false; });
   }
 
+  // ---------- edit environment (admins) ----------
+  var EV = { id: null };
+  var FIELD_LABEL = { url: "URL", description: "Description", notes: "Notes" };
+  function openEnvEdit(id) {
+    var env = envById(id); EV.id = id;
+    $("envForm").style.setProperty("--env", env.color);
+    $("envTitle").textContent = "Edit " + env.name;
+    $("envUrl").value = hasUrl(env) ? env.url : "";
+    $("envDesc").value = env.description || "";
+    $("envNotes").value = env.notes || "";
+    $("envErr").textContent = ""; $("envSave").disabled = false;
+    var ul = $("envChanges"); ul.innerHTML = "";
+    $("envDlg").showModal();
+    api("/api/environments/" + id + "/changes").then(function (r) {
+      $("envChangesBox").hidden = !r.changes.length;
+      r.changes.forEach(function (c) {
+        ul.appendChild(el("li", {}, [
+          el("b", { text: FIELD_LABEL[c.field] || c.field }), " changed " + fmtDay(new Date(c.changed_at)) + " " + fmtTime(new Date(c.changed_at)) + " by " + c.changed_by,
+          el("span", { class: "sub", text: "from: " + (c.old_value || "(empty)") }),
+          el("span", { class: "sub", text: "to: " + (c.new_value || "(empty)") })
+        ]));
+      });
+    }).catch(function () { $("envChangesBox").hidden = true; });
+  }
+  function saveEnv(ev) {
+    ev.preventDefault();
+    $("envSave").disabled = true; $("envErr").textContent = "";
+    var name = envById(EV.id).name;
+    api("/api/environments/" + EV.id, { method: "PUT", body: JSON.stringify({ url: $("envUrl").value.trim(), description: $("envDesc").value.trim(), notes: $("envNotes").value.trim() }) })
+      .then(function (r) {
+        $("envDlg").close();
+        toast(r.changed.length ? name + " updated. Everyone sees it within 30 seconds." : "No changes");
+        load();
+      })
+      .catch(function (e) { $("envErr").textContent = e.message; $("envSave").disabled = false; });
+  }
+
   // ---------- history ----------
   var HS = { rows: [], timer: null };
   function historyQuery() {
@@ -730,7 +800,7 @@
       $("tzLabel").textContent = "Times shown in your time zone" + (tz ? " (" + tz + ")" : "");
       $("myName").value = getName();
       load();
-      setInterval(function () { if (!$("bookDlg").open && !$("infoDlg").open && !$("partnersDlg").open && !$("historyDlg").open && !S.drag) load(); }, 30000);
+      setInterval(function () { if (!$("bookDlg").open && !$("infoDlg").open && !$("partnersDlg").open && !$("historyDlg").open && !$("envDlg").open && !S.drag) load(); }, 30000);
     }).catch(function (e) { toast("Couldn't reach the server: " + e.message); });
 
     $("myName").addEventListener("change", function () { setName(this.value.trim()); });
@@ -747,6 +817,8 @@
     $("infoDelete").onclick = deleteInfo;
     $("partnersBtn").onclick = openPartners;
     $("historyBtn").onclick = openHistory;
+    $("envForm").addEventListener("submit", saveEnv);
+    $("envCancel").onclick = function () { $("envDlg").close(); };
     $("hsClose").onclick = function () { $("historyDlg").close(); };
     $("hsCsv").onclick = downloadCsv;
     ["hsFrom", "hsTo", "hsEnv", "hsStatus"].forEach(function (id) { $(id).addEventListener("change", loadHistory); });
