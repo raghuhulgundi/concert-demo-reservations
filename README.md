@@ -3,7 +3,7 @@
 A small web page where people reserve time on the **Robin** and **Yoda** Concert Operate demo environments and open each one from a link. Reservations are a courtesy calendar: they show others who is demoing when, but they don't lock anyone out of the clusters.
 
 **What users see**
-- **Status cards:** one card per environment showing "Available now" or "In use" (with who has it and until when), the next few reservations, and an **Open Robin / Open Yoda** button that goes to the cluster.
+- **Status cards:** one card per environment showing "Available now" or "In use" (with who has it and until when), the next few reservations, and an **Open Robin / Open Yoda** button that goes to its launch page (section 6).
 - **Sign-in (optional):** with IBMid sign-in on, IBMers and the partners you approve log in with their IBMid and their name and email fill in automatically (section 4).
 - **Day schedule:** Robin and Yoda side by side. Click a free slot, or drag down a column, to reserve. Click a reservation to see who has it, their contact, and what it's for.
 - **Cancel:** people can cancel their own reservations. Admins can cancel anyone's.
@@ -237,13 +237,24 @@ curl -k -H "X-Admin-Key: <admin_key>" -H "Content-Type: application/json" \
 curl -k -X DELETE -H "X-Admin-Key: <admin_key>" https://<vm-host>/api/partners/<id>
 ```
 
-## 6. Change the Robin and Yoda URLs
+## 6. Launch pages, notes and links for Robin and Yoda
+
+Each environment has its own **launch page**, at `/env/robin` and `/env/yoda`. The **Open Robin** and **Open Yoda** buttons go there. A launch page shows:
+- **Header:** the name and a short **tagline**, such as "App centric demo" or "Network centric demo". The tagline also appears on the main page cards.
+- **Status:** live status (available, or who has it until when) and a **Launch console** button that opens the Concert Operate console in a new tab.
+- **About this demo:** longer **details**, such as what the environment demos, scenarios, how to run it and who to ask. Line breaks are kept and web addresses become links.
+- **Notes and links:** the short **notes** and a list of **useful links**, such as a demo script, a recording or a runbook.
+- **Reservations:** upcoming reservations, plus a **Reserve time** button.
+
+**Editing (admins):** click **Edit** next to the name on the main page, or **Edit this page** on the launch page. You can change the tagline, console URL, description, notes, details and links. Enter links one per line as `Label | https://...`.
+
+### Change the console URL
 
 When a cluster is rebuilt or moved, update its link from the page. You don't need to touch the VM.
 
 1. Sign in as an admin (an email in `admin_emails`).
 2. Click **Edit** next to **Robin** or **Yoda** on its card.
-3. Change the **Console URL**, and the description or notes if you like, then click **Save**.
+3. Change the **Console URL** (and anything else on the launch page), then click **Save**.
 
 Everyone's page picks up the new link within 30 seconds, without reloading. Reservations aren't affected, because they belong to "Robin" or "Yoda", not to a URL.
 
@@ -258,7 +269,7 @@ curl -k -X PUT -H "X-Admin-Key: <admin_key>" -H "Content-Type: application/json"
   -d '{"url":"https://new-console-url.example.com"}' https://<vm-host>/api/environments/robin
 ```
 
-Use `robin` or `yoda` (the `id` values in `config.json`). You can also send `description` and `notes`.
+Use `robin` or `yoda` (the `id` values in `config.json`). You can also send `tagline`, `description`, `notes`, `details` and `links` (a list of `{"label": ..., "url": ...}`).
 
 ## 7. Reservation history
 

@@ -2,6 +2,13 @@
 
 Versions follow `MAJOR.MINOR.PATCH`. Each release is tagged in git as `vX.Y.Z`.
 
+## v1.2.0 (2026-10-30)
+
+- **Launch page per environment** (`/env/robin`, `/env/yoda`): tagline, live status, a Launch console button, longer details (with clickable links), notes, useful links, upcoming reservations and a Reserve time button. The Open buttons on the main page now go here.
+- **Taglines on the main cards:** for example "App centric demo" for Robin and "Network centric demo" for Yoda.
+- **Edit dialog:** admins can now edit the tagline, details and links too. Every change is logged as before.
+- **Upgrading:** new database columns are added automatically on startup. Existing URLs, notes and history are kept.
+
 ## v1.1.1 (2026-10-30)
 
 - **README examples:** sample addresses now use the documentation-only range (`203.0.113.x`) and `example.com`, so they can't be mistaken for a real VM.
