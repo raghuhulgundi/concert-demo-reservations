@@ -2,6 +2,10 @@
 
 Versions follow `MAJOR.MINOR.PATCH`. Each release is tagged in git as `vX.Y.Z`.
 
+## v1.3.2 (2026-10-31)
+
+- **Builds on busy shared clusters:** the OpenShift build now reserves 2 GiB of node disk, so the cluster places it on a worker with room and doesn't evict it first when a worker runs low. Found when deploying to a shared IBM Cloud ROKS cluster.
+
 ## v1.3.1 (2026-10-30)
 
 - **Sign-in no longer fails with "Sign-in expired":** each sign-in attempt now keeps its own short-lived cookie, so a second tab or a background request can't overwrite the first attempt's state. Browser requests for `/favicon.ico`, touch icons and `robots.txt` return 404 instead of starting a new sign-in. Only page visits (`/` and `/env/<id>`) redirect to IBMid; other unknown paths return 404.

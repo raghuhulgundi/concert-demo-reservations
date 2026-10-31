@@ -29,7 +29,9 @@ spec:
       kind: ImageStreamTag
       name: demo-reserve:latest
   resources:
-    requests: {cpu: 100m, memory: 256Mi}
+    # Reserve disk for the build so busy shared clusters place it on a node with room
+    # and don't evict it first when a node runs low.
+    requests: {cpu: 100m, memory: 256Mi, ephemeral-storage: 2Gi}
     limits: {memory: 1Gi}
 ---
 apiVersion: v1
