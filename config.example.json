@@ -39,7 +39,8 @@
       "notes": "",
       "color": "#d2591b",
       "details": "",
-      "links": []
+      "links": [],
+      "important": ""
     },
     {
       "id": "yoda",
@@ -50,7 +51,8 @@
       "notes": "",
       "color": "#198038",
       "details": "",
-      "links": []
+      "links": [],
+      "important": ""
     }
   ]
 }

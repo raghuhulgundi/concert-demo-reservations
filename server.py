@@ -35,7 +35,7 @@ CONFIG_PATH = os.environ.get("RESERVE_CONFIG", os.path.join(BASE_DIR, "config.js
 DB_PATH = os.environ.get("RESERVE_DB", os.path.join(BASE_DIR, "data", "reservations.db"))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 
-__version__ = "1.2.1"
+__version__ = "1.2.2"
 
 if not os.path.exists(CONFIG_PATH):
     sys.exit("No config file at %s. Copy config.example.json to config.json and fill in your settings." % CONFIG_PATH)
@@ -143,7 +143,7 @@ def init_db():
             )"""
         )
         env_cols = [r[1] for r in conn.execute("PRAGMA table_info(env_settings)").fetchall()]
-        for col in ("tagline", "details", "links"):
+        for col in ("tagline", "details", "links", "important"):
             if col not in env_cols:
                 conn.execute("ALTER TABLE env_settings ADD COLUMN %s TEXT" % col)
         conn.execute(
@@ -271,7 +271,7 @@ def history_row(row, now):
     }
 
 
-EDITABLE_ENV_FIELDS = ("url", "description", "notes", "tagline", "details", "links")
+EDITABLE_ENV_FIELDS = ("url", "description", "notes", "tagline", "details", "links", "important")
 MAX_LINKS = 12
 
 
@@ -321,7 +321,7 @@ def environments():
         conn.close()
     out = []
     for e in CONFIG["environments"]:
-        item = {k: e.get(k, "") for k in ("id", "name", "description", "url", "notes", "color", "tagline", "details")}
+        item = {k: e.get(k, "") for k in ("id", "name", "description", "url", "notes", "color", "tagline", "details", "important")}
         item["links"] = e.get("links") if isinstance(e.get("links"), list) else []
         o = overrides.get(e["id"])
         if o:
@@ -648,6 +648,8 @@ class Handler(BaseHTTPRequestHandler):
                 new["details"] = clean_multiline(data.get("details"), 5000)
             if "links" in data:
                 new["links"] = clean_links(data.get("links"))
+            if "important" in data:
+                new["important"] = clean_multiline(data.get("important"), 1500)
             if not new:
                 raise ValueError("Nothing to change")
         except (ValueError, json.JSONDecodeError) as e:
