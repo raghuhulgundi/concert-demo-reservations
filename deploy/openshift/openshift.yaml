@@ -1,0 +1,68 @@
+# Concert Operate demo reservation board on Red Hat OpenShift.
+# Applied by deploy/openshift/deploy.sh (which also creates the settings Secret and runs the build).
+#
+#  ImageStream + BuildConfig : builds the image in the cluster from your local folder (binary build), no registry login needed
+#  PersistentVolumeClaim     : keeps reservations, history, partner list and page content (SQLite) across restarts
+#  (deployment.yaml)         : one replica, Recreate strategy (single writer for SQLite), health checks on /healthz
+#  Service + Route           : HTTPS at the edge with the cluster's certificate, HTTP redirected to HTTPS
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: demo-reserve
+  labels: {app: demo-reserve}
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: demo-reserve
+  labels: {app: demo-reserve}
+spec:
+  source:
+    type: Binary
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: deploy/openshift/Containerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: demo-reserve:latest
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {memory: 1Gi}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: demo-reserve-data
+  labels: {app: demo-reserve}
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-reserve
+  labels: {app: demo-reserve}
+spec:
+  selector: {app: demo-reserve}
+  ports:
+    - {name: http, port: 8080, targetPort: http}
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: demo-reserve
+  labels: {app: demo-reserve}
+spec:
+  # host: leave unset for the default <route>-<project>.apps.<cluster domain> name (covered by the
+  # cluster's wildcard certificate). deploy.sh sets it when you pass ROUTE_HOST=...
+  to: {kind: Service, name: demo-reserve}
+  port: {targetPort: http}
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

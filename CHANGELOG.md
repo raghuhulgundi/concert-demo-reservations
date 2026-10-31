@@ -2,6 +2,11 @@
 
 Versions follow `MAJOR.MINOR.PATCH`. Each release is tagged in git as `vX.Y.Z`.
 
+## v1.3.0 (2026-10-30)
+
+- **Deploy on Red Hat OpenShift:** `deploy/openshift/` contains a UBI 9 Python Containerfile and manifests: ImageStream, binary BuildConfig, PersistentVolumeClaim, Deployment (one replica, Recreate strategy, health checks, restricted security context, rolls out on new builds), Service and an edge Route with HTTP-to-HTTPS redirect. `deploy.sh` checks your login, creates the project, stores settings in a Secret, builds from only the app files, waits for the rollout, and prints the URL and IBMid redirect URL. The README explains how to move data over from the VM.
+- **No app code changes:** the same `server.py` runs on the VM and on OpenShift.
+
 ## v1.2.2 (2026-10-30)
 
 - **Highlighted notice on launch pages:** a new "Important notice" field, edited in the Edit dialog, shows as a bold, highlighted box right below the Launch console button. Use it for the rules people must not miss, such as "Before your demo". A short first line becomes the box's heading.

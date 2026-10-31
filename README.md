@@ -15,6 +15,8 @@ A small web page where people reserve time on the **Robin** and **Yoda** Concert
 
 **Port:** it serves HTTPS directly on **port 443**, so that's the only port that needs to be open.
 
+**Have an OpenShift cluster?** You can run it there instead, with the cluster's real certificate and hostname. See "Deploy on Red Hat OpenShift" further down.
+
 ## Quick start: deploy on a RHEL VM
 
 These steps work on a fresh RHEL 8 or 9 VM (for example from TechZone). They take about 10 minutes.
@@ -323,6 +325,62 @@ curl -k https://localhost/healthz           # shows the running version
 ```
 
 Your `config.json`, reservations, history, partner list and certificate aren't touched by updates. Database changes are applied automatically on startup. If a new version adds settings, they show up in `config.example.json`. Copy any you want into your `config.json`.
+
+## Deploy on Red Hat OpenShift
+
+If you have an OpenShift cluster, run the app there instead of on a VM. The cluster's router serves it over HTTPS with the cluster's real certificate, so there's **no browser warning** and you get a proper hostname such as `https://demo-reserve-demo-reservations.apps.<your cluster domain>`.
+
+**What gets created** (in a project called `demo-reservations` by default)
+- **Build:** an in-cluster build of the image from your local folder, using Red Hat's UBI 9 Python image. No registry login is needed.
+- **Storage:** a 1 GiB persistent volume for reservations, history, the partner list and launch page content.
+- **App:** one pod that restarts automatically on a new build or a settings change, with health checks.
+- **Route:** HTTPS at the edge, with HTTP redirected to HTTPS.
+- **Settings:** a Secret holding your settings file (`config.openshift.json`). It never goes into git or the image.
+
+**What you need:** the `oc` CLI, a login with rights to create a project (or an existing project you can use), and a default StorageClass on the cluster.
+
+**Deploy**
+
+```bash
+# in the OpenShift console: your name (top right) > Copy login command > Display token, then run the oc login line
+oc login --token=... --server=https://api.<cluster>:6443
+cd concert-demo-reservations
+./deploy/openshift/deploy.sh
+```
+
+The first run creates `config.openshift.json` with sign-in off and a random admin key, builds the image, starts the app and prints the URL and the IBMid redirect URL. Then:
+
+1. **Register the redirect URL** it printed (`https://<route host>/auth/callback`) in IBM's SSO tool. You can add it as an extra redirect URL on your existing IBMid configuration.
+2. **Fill in the `auth` section** of `config.openshift.json` (section 4), with `redirect_uri` set to that same URL.
+3. **Run `./deploy/openshift/deploy.sh` again.**
+
+**Options**
+- **Another project name:** `PROJECT=my-project ./deploy/openshift/deploy.sh`
+- **Your own hostname:** `ROUTE_HOST=reserve.example.com ./deploy/openshift/deploy.sh`. The hostname needs a DNS record pointing at the cluster's router, and a certificate that covers it. With cert-manager and its OpenShift Routes add-on, you can annotate the Route to get one issued automatically, for example `oc annotate route demo-reserve cert-manager.io/issuer-kind=ClusterIssuer cert-manager.io/issuer-name=<your issuer>`.
+
+**Moving your existing data from the VM**
+
+This brings over reservations, history, partners and launch page content, and keeps people signed in.
+
+```bash
+# 1. On the VM: stop the app and copy the data out
+sudo systemctl stop demo-reserve
+sudo cp /opt/demo-reserve/data/reservations.db /opt/demo-reserve/data/session.key /tmp/ && sudo chmod 644 /tmp/reservations.db /tmp/session.key
+# 2. On your Mac: download both files (use your own SSH command and port)
+scp -P <port> -i <key> itzuser@<vm-host>:/tmp/{reservations.db,session.key} .
+# 3. Copy them into the OpenShift pod and restart
+POD=$(oc get pod -l app=demo-reserve -o jsonpath='{.items[0].metadata.name}')
+oc cp reservations.db "$POD":/data/reservations.db.import
+oc cp session.key "$POD":/data/session.key
+oc exec "$POD" -- mv /data/reservations.db.import /data/reservations.db
+oc rollout restart deployment/demo-reserve
+```
+
+Your old `config.json` from the VM can become `config.openshift.json`. Change `"tls"` to `false`, `"port"` to `8080`, and `redirect_uri` to the new route address.
+
+**Updating to a new version:** `git pull`, then `./deploy/openshift/deploy.sh`.
+
+**Logs:** `oc logs -f deployment/demo-reserve`. **Status:** `oc get pods,route -l app=demo-reserve`.
 
 ## Alternative: run with Podman or Docker
 

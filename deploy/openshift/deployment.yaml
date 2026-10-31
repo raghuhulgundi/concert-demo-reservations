@@ -1,0 +1,53 @@
+# The Deployment is applied only on the first run (deploy.sh), so later runs don't reset the image
+# the build trigger has set. Change it with `oc edit deployment/demo-reserve` or `oc set ...`.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-reserve
+  labels: {app: demo-reserve}
+  annotations:
+    # Roll out automatically whenever a new image is built into the ImageStream
+    image.openshift.io/triggers: '[{"from":{"kind":"ImageStreamTag","name":"demo-reserve:latest"},"fieldPath":"spec.template.spec.containers[?(@.name==\"app\")].image"}]'
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate          # never two pods writing the same SQLite file
+  selector:
+    matchLabels: {app: demo-reserve}
+  template:
+    metadata:
+      labels: {app: demo-reserve}
+    spec:
+      containers:
+        - name: app
+          image: demo-reserve:latest
+          ports:
+            - {name: http, containerPort: 8080}
+          env:
+            - {name: RESERVE_CONFIG, value: /config/config.json}
+            - {name: RESERVE_DB, value: /data/reservations.db}
+            - {name: RESERVE_PORT, value: "8080"}
+          volumeMounts:
+            - {name: data, mountPath: /data}
+            - {name: config, mountPath: /config, readOnly: true}
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {memory: 256Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities: {drop: [ALL]}
+            seccompProfile: {type: RuntimeDefault}
+      volumes:
+        - name: data
+          persistentVolumeClaim: {claimName: demo-reserve-data}
+        - name: config
+          secret: {secretName: demo-reserve-config}

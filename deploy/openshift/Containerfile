@@ -1,0 +1,16 @@
+# Container image for Red Hat OpenShift, built on Red Hat's Universal Base Image (UBI 9, Python 3.12).
+# OpenShift runs it as a random non-root user, which this image supports.
+# The OpenShift Route terminates HTTPS with the cluster's certificate, so the app serves plain HTTP on 8080.
+FROM registry.access.redhat.com/ubi9/python-312:latest
+
+WORKDIR /opt/app-root/src
+COPY server.py VERSION ./
+COPY static ./static
+
+ENV PYTHONUNBUFFERED=1 \
+    RESERVE_PORT=8080 \
+    RESERVE_CONFIG=/config/config.json \
+    RESERVE_DB=/data/reservations.db
+
+EXPOSE 8080
+CMD ["python3", "server.py"]

@@ -1,5 +1,6 @@
 # Your real settings (client secret, admin key) stay on the VM, never in git
 config.json
+config.openshift.json
 .env
 
 # Runtime data: reservations, partner list, session key, certificates
