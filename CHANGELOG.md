@@ -2,6 +2,12 @@
 
 Versions follow `MAJOR.MINOR.PATCH`. Each release is tagged in git as `vX.Y.Z`.
 
+## v1.2.1 (2026-10-30)
+
+- **Reserve on the launch page:** Reserve time on Robin's or Yoda's launch page opens the booking form right there. The form suggests the next free slot and shows what's already booked that day. After booking, you stay on the launch page, with your reservation listed.
+- **Cancel from the launch page:** your own upcoming reservations show a "YOU" tag and a Cancel button. Admins can cancel anyone's.
+- **Status line:** it says "You have it until ..." when the current reservation is yours.
+
 ## v1.2.0 (2026-10-30)
 
 - **Launch page per environment** (`/env/robin`, `/env/yoda`): tagline, live status, a Launch console button, longer details (with clickable links), notes, useful links, upcoming reservations and a Reserve time button. The Open buttons on the main page now go here.
