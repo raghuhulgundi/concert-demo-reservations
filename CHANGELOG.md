@@ -2,6 +2,13 @@
 
 Versions follow `MAJOR.MINOR.PATCH`. Each release is tagged in git as `vX.Y.Z`.
 
+## v1.3.1 (2026-10-30)
+
+- **Sign-in no longer fails with "Sign-in expired":** each sign-in attempt now keeps its own short-lived cookie, so a second tab or a background request can't overwrite the first attempt's state. Browser requests for `/favicon.ico`, touch icons and `robots.txt` return 404 instead of starting a new sign-in. Only page visits (`/` and `/env/<id>`) redirect to IBMid; other unknown paths return 404.
+- **Tolerant cookie reading:** one malformed cookie from another site (for example a consent banner cookie with spaces) no longer hides the app's own cookies.
+- **Friendlier repeats:** opening `/auth/login` while signed in goes straight to the page, and a repeated callback after a successful sign-in goes home instead of showing an error. Failed callbacks log which cookies arrived, to help with troubleshooting.
+- **Git hygiene:** editor swap and backup files (`*.swp`, `*.bak`, `*~`) are ignored.
+
 ## v1.3.0 (2026-10-30)
 
 - **Deploy on Red Hat OpenShift:** `deploy/openshift/` contains a UBI 9 Python Containerfile and manifests: ImageStream, binary BuildConfig, PersistentVolumeClaim, Deployment (one replica, Recreate strategy, health checks, restricted security context, rolls out on new builds), Service and an edge Route with HTTP-to-HTTPS redirect. `deploy.sh` checks your login, creates the project, stores settings in a Secret, builds from only the app files, waits for the rollout, and prints the URL and IBMid redirect URL. The README explains how to move data over from the VM.
