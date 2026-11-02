@@ -86,6 +86,9 @@ def tx_cookie_name(state):
 
 ISO_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?Z$")
 WRITE_LOCK = threading.Lock()
+# SESSION_KEY is set once in main(), before the server starts accepting requests, so there is
+# no race condition. It stays a module-level name so sign() / unsign() can reach it without
+# passing it through every call site. Don't read or write it outside main() and those helpers.
 SESSION_KEY = b""
 
 
@@ -496,9 +499,15 @@ def exchange_code(code, verifier, redirect_uri):
 def user_from_tokens(tokens, nonce):
     """Validate the ID token and build the session user.
 
-    The ID token comes straight from the provider's token endpoint over verified TLS, so per
-    OpenID Connect Core 3.1.3.7 the TLS check stands in for the signature check. Issuer,
-    audience, expiry and nonce are still checked.
+    JWT SIGNATURE CHECK: intentionally skipped.
+    Per OpenID Connect Core 3.1.3.7, when the token is obtained directly from the provider's
+    token endpoint over verified TLS (urllib uses the system CA bundle), the TLS channel gives
+    the same authenticity guarantee as a signature check. This is not a security gap: the token
+    never passes through the browser or any other hop between the provider and this code.
+    If you add a proxy, or start accepting tokens from an untrusted source, add full JWT
+    signature verification using the provider's JWKS endpoint.
+
+    Claims still verified here: issuer (iss), audience (aud), expiry (exp) and nonce.
     """
     d = discovery()
     id_token = tokens.get("id_token")
@@ -685,7 +694,8 @@ class Handler(BaseHTTPRequestHandler):
         by = user["e"] if user else "admin key"
         when = fmt_utc(now_utc())
         current = {e["id"]: e for e in environments()}[env_id]
-        as_text = lambda f, v: json.dumps(v or []) if f == "links" else (v or "")
+        def as_text(f, v):
+            return json.dumps(v or []) if f == "links" else (v or "")
         changed = [f for f in new if as_text(f, current.get(f)) != as_text(f, new[f])]
         if not changed:
             return self.send_json(200, {"environment": current, "changed": []})
@@ -804,8 +814,8 @@ class Handler(BaseHTTPRequestHandler):
         return self.send_json(200, {
             "total": total,
             "returned": len(rows),
-            "people": [{k: r[k] or "" for k in ("email", "name", "access", "first_login", "last_login")}
-                       | {"logins": r["logins"]} for r in people],
+            "people": [dict({k: r[k] or "" for k in ("email", "name", "access", "first_login", "last_login")},
+                            logins=r["logins"]) for r in people],
             "logins": [{k: r[k] or "" for k in ("id", "email", "name", "access", "logged_in_at")} for r in rows],
         })
 
@@ -925,6 +935,9 @@ class Handler(BaseHTTPRequestHandler):
             if not self.is_admin(user):
                 return self.send_json(403 if user else 401, {"error": "Admins only"})
             return self.env_changes(em.group(1))
+        # Allow unauthenticated CLI access to history when a valid X-Admin-Key header is present.
+        # is_admin(None) is True only when the header matches the admin key (no user needed).
+        # This must come before the AUTH_ON gate below, which would otherwise block it.
         if path == "/api/history" and not user and self.is_admin(None):
             return self.history(None, query)
         if AUTH_ON and not user:
@@ -1105,7 +1118,8 @@ class Handler(BaseHTTPRequestHandler):
         if not see_all:
             where.append("lower(owner) = ?")
             args.append(user["e"].lower())
-        q1 = lambda k: (query.get(k, [""])[0] or "").strip()
+        def q1(k):
+            return (query.get(k, [""])[0] or "").strip()
         try:
             if q1("from"):
                 where.append("start_at >= ?")
@@ -1219,7 +1233,7 @@ def tls_context():
 
 
 def main():
-    global SESSION_KEY
+    global SESSION_KEY  # set once here, before serve_forever(); see the comment at its declaration
     init_db()
     SESSION_KEY = load_session_key()
     if AUTH_ON:
