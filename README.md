@@ -294,12 +294,18 @@ curl -k -H "X-Admin-Key: <admin_key>" "https://<vm-host>/api/history?from=2026-1
 
 ### Login report (admins)
 
-Every successful sign-in is recorded: who, when, and how they got in (admin, IBM address, config list or partner list). Admins see it under **Login report**, next to **Partner access** in the top right. It shows:
-- **People:** one row per person with their number of logins, first login and last login.
-- **Every login:** each sign-in, newest first.
-- **Filters and CSV:** date range and a name/email search. **Download CSV** saves the filtered list, with local and UTC times.
+Two things are recorded for every signed-in person: each **sign-in** (when they log in with IBMid, and how they got in: admin, IBM address, config list or partner list) and each **page visit** (every time they open the main page or a launch page). Visits matter because a sign-in lasts `session_hours` (12 by default), so someone who stays signed in and opens the page ten times has one login and ten visits.
 
-Only admins can see it. It's stored in the same database as the reservations, so it moves and backs up with them. It records sign-ins only, not every page view, and only while sign-in is turned on. Logins made before v1.4.0 aren't in the report.
+Admins see it under **Login report**, next to **Partner access** in the top right. It shows:
+- **People:** one row per person with their number of logins and visits, first login, last login and last visit.
+- **Every login** and **Every page visit:** each one, newest first, with the page (main page or Robin/Yoda launch page).
+- **Filters and CSV:** date range and a name/email search. **Download CSV** saves logins and visits together, with local and UTC times.
+
+Only admins can see it. It's stored in the same database as the reservations, so it moves and backs up with them.
+
+**What counts as a visit:** opening or reloading `/` or `/env/<id>`. The page's automatic refresh, which only calls the API, does not count, and neither do health checks or requests from signed-out browsers. Both are recorded only while sign-in is turned on. Logins made before v1.5.0 are in the report, but visits before v1.5.0 are not.
+
+**Disk use:** about 100 bytes per visit. 100,000 visits add roughly 10 MB to `reservations.db`, so the default 1 GiB OpenShift volume doesn't need to change.
 
 From the command line:
 

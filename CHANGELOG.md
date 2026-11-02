@@ -2,8 +2,9 @@
 
 Versions follow `MAJOR.MINOR.PATCH`. Each release is tagged in git as `vX.Y.Z`.
 
-## Unreleased
+## v1.5.0 (2026-11-02)
 
+- **Login report now counts page visits:** until now only a fresh IBMid sign-in was recorded, so someone who stayed signed in and kept opening the page showed up once. Each load of the main page or a launch page is now recorded too, with a Visits and Last visit column per person, an "Every page visit" table, and the visits in the CSV. Stored in a new `page_visits` table, about 100 bytes per visit. Background refreshes, health checks and signed-out requests are not counted.
 - **Version file fixed:** `VERSION` said 1.3.0 while the app reported 1.4.0. They now match, and CI checks that they stay in sync.
 - **Code hygiene:** replaced `lambda` helpers with `def`, removed a `dict | dict` merge that needs Python 3.9 (the README promises 3.6), and added comments for the SESSION_KEY global and the admin-key route for `/api/history`. The ID token signature note is now fuller.
 - **GitHub collaboration setup:** added `CONTRIBUTING.md`, a PR template, bug and feature issue templates, and a CI workflow that syntax-checks and smoke-tests the server on every push.
