@@ -2,6 +2,12 @@
 
 Versions follow `MAJOR.MINOR.PATCH`. Each release is tagged in git as `vX.Y.Z`.
 
+## v1.4.0 (2026-11-02)
+
+- **Login report for admins:** every successful sign-in is recorded (who, when, how they got in). Admins open it from the new **Login report** button, with a per-person summary, filters and CSV download. Also available at `/api/logins`. Ported from the cloud edition (v1.2.0).
+- **Login times:** the report shows the time of each login and of each person's last login, not only the day.
+- **Comments:** clearer notes in the code on why the ID token signature check relies on TLS (OIDC Core 3.1.3.7).
+
 ## v1.3.2 (2026-10-31)
 
 - **Builds on busy shared clusters:** the OpenShift build now reserves 2 GiB of node disk, so the cluster places it on a worker with room and doesn't evict it first when a worker runs low. Found when deploying to a shared IBM Cloud ROKS cluster.
