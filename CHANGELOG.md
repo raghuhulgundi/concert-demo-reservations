@@ -2,6 +2,12 @@
 
 Versions follow `MAJOR.MINOR.PATCH`. Each release is tagged in git as `vX.Y.Z`.
 
+## Unreleased
+
+- **Version file fixed:** `VERSION` said 1.3.0 while the app reported 1.4.0. They now match, and CI checks that they stay in sync.
+- **Code hygiene:** replaced `lambda` helpers with `def`, removed a `dict | dict` merge that needs Python 3.9 (the README promises 3.6), and added comments for the SESSION_KEY global and the admin-key route for `/api/history`. The ID token signature note is now fuller.
+- **GitHub collaboration setup:** added `CONTRIBUTING.md`, a PR template, bug and feature issue templates, and a CI workflow that syntax-checks and smoke-tests the server on every push.
+
 ## v1.4.0 (2026-11-02)
 
 - **Login report for admins:** every successful sign-in is recorded (who, when, how they got in). Admins open it from the new **Login report** button, with a per-person summary, filters and CSV download. Also available at `/api/logins`. Ported from the cloud edition (v1.2.0).
