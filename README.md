@@ -9,6 +9,7 @@ A small web page where people reserve time on the **Robin** and **Yoda** Concert
 - **Cancel:** people can cancel their own reservations. Admins can cancel anyone's.
 - **History:** every reservation is kept, including past and cancelled ones, with filters and a CSV download (section 7).
 - **URL changes from the page:** admins update the Robin and Yoda links with an Edit button, and every change is logged (section 6).
+- **Show or hide an environment:** admins can switch an environment (such as a development one) on or off from the page, without a redeploy (section 6).
 - **Time zones:** each person sees times in their own local time zone.
 
 **What it needs:** Python 3.6 or newer and the `openssl` command, both already on RHEL and Ubuntu TechZone VMs. No pip installs, no web server, no database server. Reservations are stored in `data/reservations.db` (SQLite).
@@ -250,6 +251,22 @@ Each environment has its own **launch page**, at `/env/robin` and `/env/yoda`. T
 - **Reservations:** upcoming reservations, plus a **Reserve time** button that books right on the launch page, so you stay on it. Your own reservations there have a **Cancel** button.
 
 **Editing (admins):** click **Edit** next to the name on the main page, or **Edit this page** on the launch page. You can change the tagline, console URL, description, notes, details and links. Enter links one per line as `Label | https://...`. In the details, wrap words in `**double asterisks**` to make them bold.
+
+### Show or hide an environment (no redeploy)
+
+Any environment in `config.json` can be switched on or off from the page, which is handy for a development environment such as Bear or for maintenance on Robin or Yoda.
+
+1. Sign in as an admin and click **Edit** on the environment's card.
+2. Tick or untick **Show this environment to everyone**, then click **Save**.
+
+While it is off:
+- **Everyone else** doesn't see its card or its column, can't open its launch page and can't book it.
+- **Admins** still see it, dimmed with a **Hidden** tag, so they can switch it back on or reserve time on it.
+- **Existing reservations** are kept and still appear in History. Hiding only stops new bookings and removes it from view.
+
+The change takes effect within 30 seconds and is recorded in the change history. To start an environment as hidden, add `"enabled": false` to its entry in `config.json` (the example config does this for Bear). The switch on the page then overrides that value.
+
+Adding a brand-new environment still means adding it to `config.json` and redeploying once. After that, showing and hiding it needs no redeploy.
 
 ### Change the console URL
 
