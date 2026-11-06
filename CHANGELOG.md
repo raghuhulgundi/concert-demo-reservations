@@ -2,6 +2,11 @@
 
 Versions follow `MAJOR.MINOR.PATCH`. Each release is tagged in git as `vX.Y.Z`.
 
+## v1.5.1 (2026-11-06)
+
+- **Close button at the top right:** Login report, Partner access and Reservation history now have a × in a header that stays in view, so you no longer scroll to the bottom to close them. The Close button at the bottom is still there.
+- **Login report opens on today:** the dates start at the current day, so the report stays short as logins and visits build up. Change the dates or clear them to see older activity.
+
 ## v1.5.0 (2026-11-02)
 
 - **Login report now counts page visits:** until now only a fresh IBMid sign-in was recorded, so someone who stayed signed in and kept opening the page showed up once. Each load of the main page or a launch page is now recorded too, with a Visits and Last visit column per person, an "Every page visit" table, and the visits in the CSV. Stored in a new `page_visits` table, about 100 bytes per visit. Background refreshes, health checks and signed-out requests are not counted.
